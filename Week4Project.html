@@ -1,0 +1,170 @@
+<h2 id="introduction">Introduction</h2>
+<p>Six participants fitted with wearable sensors performed 10 sets of bicep curls in five different fashions (exercise classes <code>A</code> through <code>E</code>). The goal of this project is to construct and evaluate a machine learning model to predict which exercise classes was performed for given observations, using sensor readings as predictors.</p>
+<p>Reference: <a href="http://groupware.les.inf.puc-rio.br/har#weight_lifting_exercises#ixzz4TjKsbTNc">Human Activity Recognition, Weight-Lifting Exercises</a>:<br />
+Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013.</p>
+<h2 id="setup-and-input">Setup and Input</h2>
+<p>Libraries</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(caret)</code></pre></div>
+<p>Load Data</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">training &lt;-<span class="st"> </span><span class="kw">read.csv</span>(<span class="st">&quot;pml-training.csv&quot;</span>,<span class="dt">na.strings=</span><span class="kw">c</span>(<span class="st">&quot;NA&quot;</span>,<span class="st">&quot;&quot;</span>,<span class="st">&quot;#DIV/0!&quot;</span>))
+<span class="kw">dim</span>(training)</code></pre></div>
+<pre><code>## [1] 19622   160</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">testing &lt;-<span class="st"> </span><span class="kw">read.csv</span>(<span class="st">&quot;pml-testing.csv&quot;</span>,<span class="dt">na.strings=</span><span class="kw">c</span>(<span class="st">&quot;NA&quot;</span>,<span class="st">&quot;&quot;</span>,<span class="st">&quot;#DIV/0!&quot;</span>))
+<span class="kw">dim</span>(testing)</code></pre></div>
+<pre><code>## [1]  20 160</code></pre>
+<h2 id="tidy-the-data">Tidy the Data</h2>
+<p>There are 60 variables in the training set with no missing values. The other 100 variables each have more than 19000 missing values; drop these from training and test sets.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">na.counts &lt;-<span class="st"> </span><span class="kw">colSums</span>(<span class="kw">is.na</span>(training))
+<span class="kw">table</span>(na.counts)</code></pre></div>
+<pre><code>## na.counts
+##     0 19216 19217 19218 19220 19221 19225 19226 19227 19248 19293 19294 
+##    60    67     1     1     1     4     1     4     2     2     1     1 
+## 19296 19299 19300 19301 19622 
+##     2     1     4     2     6</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">hist</span>(na.counts)</code></pre></div>
+<div class="figure">
+<img src="figure/drop%20missing-1.png" alt="number of NA values vs variable index" />
+<p class="caption">number of NA values vs variable index</p>
+</div>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">training.no.na &lt;-<span class="st"> </span>training[na.counts ==<span class="st"> </span><span class="dv">0</span>]
+<span class="kw">dim</span>(training.no.na)</code></pre></div>
+<pre><code>## [1] 19622    60</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">testing.no.na &lt;-<span class="st"> </span>testing[na.counts ==<span class="st"> </span><span class="dv">0</span>]
+<span class="kw">dim</span>(testing.no.na)</code></pre></div>
+<pre><code>## [1] 20 60</code></pre>
+<p>Drop more variables</p>
+<ul>
+<li>drop column 1, it is row number in the csv file, no predictive value</li>
+<li>drop timestamps (columns 3-5), see if we can get by without using them</li>
+<li>drop new_window (column 6) logical variable which is mostly <code>no</code> in training</li>
+</ul>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">table</span>(training$new_window)</code></pre></div>
+<pre><code>## 
+##    no   yes 
+## 19216   406</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">train.noX &lt;-<span class="st"> </span>training.no.na[<span class="kw">c</span>(-<span class="dv">1</span>, -<span class="dv">3</span>, -<span class="dv">4</span>, -<span class="dv">5</span>, -<span class="dv">6</span>)]
+<span class="kw">dim</span>(train.noX)</code></pre></div>
+<pre><code>## [1] 19622    55</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">test.noX &lt;-<span class="st"> </span>testing.no.na[<span class="kw">c</span>(-<span class="dv">1</span>, -<span class="dv">3</span>, -<span class="dv">4</span>, -<span class="dv">5</span>, -<span class="dv">6</span>)]
+<span class="kw">dim</span>(test.noX)</code></pre></div>
+<pre><code>## [1] 20 55</code></pre>
+<h2 id="explore-and-preprocess-data">Explore and Preprocess Data</h2>
+<p>Variable <code>user_name</code> (column 1) appears to be significant. (Note that taking <code>user_name</code> as predictor implies the model will require calibrating to each new user.)</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">table</span>(training$user_name)</code></pre></div>
+<pre><code>## 
+##   adelmo carlitos  charles   eurico   jeremy    pedro 
+##     3892     3112     3536     3070     3402     2610</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">plot</span>(training[,<span class="kw">c</span>(<span class="st">&quot;user_name&quot;</span>,<span class="st">&quot;classe&quot;</span>)])</code></pre></div>
+<div class="figure">
+<img src="figure/user_name-1.png" alt="classe vs user_name" />
+<p class="caption">classe vs user_name</p>
+</div>
+<p>Convert to <code>user_name</code> to 6 numeric variables (dummy variables) to allow <code>gbm</code> modeling.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">dv &lt;-<span class="st"> </span><span class="kw">dummyVars</span>(~<span class="st"> </span>user_name,<span class="dt">data=</span>test.noX)
+train.dv &lt;-<span class="st"> </span><span class="kw">cbind</span>(<span class="kw">predict</span>(dv,<span class="dt">newdata=</span>train.noX),train.noX[,-<span class="dv">1</span>])
+<span class="kw">dim</span>(train.dv)</code></pre></div>
+<pre><code>## [1] 19622    60</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">test.dv &lt;-<span class="st"> </span><span class="kw">cbind</span>(<span class="kw">predict</span>(dv,<span class="dt">newdata=</span>test.noX),test.noX[,-<span class="dv">1</span>])
+<span class="kw">dim</span>(test.dv)</code></pre></div>
+<pre><code>## [1] 20 60</code></pre>
+<p>Check for near-zero covariance to see if we can drop more variables. No, there are not any variables with zero variance or near-zero variance.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">nzc &lt;-<span class="st"> </span><span class="kw">nearZeroVar</span>(train.dv, <span class="dt">saveMetrics =</span> T)
+<span class="kw">table</span>(nzc$nzv)</code></pre></div>
+<pre><code>## 
+## FALSE 
+##    60</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">table</span>(nzc$zeroVar)</code></pre></div>
+<pre><code>## 
+## FALSE 
+##    60</code></pre>
+<p>Compute principal component analysis to see if some of the variables can be dropped. Gradual fall-off of curve suggests we can't reduce number of variables significantly by dropping low-importance variables, so won't use PCA for the model.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">p0 &lt;-<span class="st"> </span><span class="kw">prcomp</span>(<span class="kw">subset</span>(train.dv, <span class="dt">select =</span> -<span class="kw">c</span>(classe)))
+<span class="kw">plot</span>(p0$sdev)</code></pre></div>
+<div class="figure">
+<img src="figure/pca-1.png" alt="PCA variable importance as indicated by std dev" />
+<p class="caption">PCA variable importance as indicated by std dev</p>
+</div>
+<p>Subset the training set to reduce model run time. Use 1/10 of original training set.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">set.seed</span>(<span class="dv">107</span>)
+inTr &lt;-<span class="st"> </span><span class="kw">createDataPartition</span>(<span class="dt">y=</span>train.dv$classe,<span class="dt">p=</span><span class="fl">0.1</span>,<span class="dt">list=</span>F)
+train.dv.subset &lt;-<span class="st"> </span>train.dv[inTr,]
+<span class="kw">dim</span>(train.dv.subset)</code></pre></div>
+<pre><code>## [1] 1964   60</code></pre>
+<h2 id="buid-and-evaluate-the-model">Buid and Evaluate the Model</h2>
+<p>Each section addresses one of the 4 parts of the project assignment.</p>
+<h3 id="how-the-model-is-built">1. How the Model is Built</h3>
+<p>Because outcome is a nominal variable, use gradient-boosting multinomial logistic regression (<code>gbm</code>) with k-fold cross-validation. Report on run-time of the model on the training subset used.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">t1 &lt;-<span class="st"> </span><span class="kw">Sys.time</span>()
+train_control&lt;-<span class="st"> </span><span class="kw">trainControl</span>(<span class="dt">method=</span><span class="st">&quot;cv&quot;</span>, <span class="dt">number=</span><span class="dv">10</span>, <span class="dt">savePredictions =</span> <span class="ot">TRUE</span>)
+mod1 &lt;-<span class="st"> </span><span class="kw">train</span>(classe ~<span class="st"> </span>., <span class="dt">data=</span>train.dv.subset, <span class="dt">trControl=</span>train_control, <span class="dt">method=</span><span class="st">&quot;gbm&quot;</span>, <span class="dt">verbose=</span>F)</code></pre></div>
+<pre><code>## Loading required package: gbm</code></pre>
+<pre><code>## Loading required package: survival</code></pre>
+<pre><code>## 
+## Attaching package: &#39;survival&#39;</code></pre>
+<pre><code>## The following object is masked from &#39;package:caret&#39;:
+## 
+##     cluster</code></pre>
+<pre><code>## Loading required package: splines</code></pre>
+<pre><code>## Loading required package: parallel</code></pre>
+<pre><code>## Loaded gbm 2.1</code></pre>
+<pre><code>## Loading required package: plyr</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">Sys.time</span>() -<span class="st"> </span>t1</code></pre></div>
+<pre><code>## Time difference of 1.44183 mins</code></pre>
+<p>Compute confusion matrix for training subset.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">confusionMatrix.train</span>(mod1)</code></pre></div>
+<pre><code>## Cross-Validated (10 fold) Confusion Matrix 
+## 
+## (entries are percentual average cell counts across resamples)
+##  
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 27.9  0.7  0.0  0.1  0.0
+##          B  0.4 17.9  0.5  0.2  0.4
+##          C  0.1  0.6 16.8  0.7  0.3
+##          D  0.1  0.1  0.2 15.2  0.4
+##          E  0.1  0.1  0.0  0.3 17.4
+##                             
+##  Accuracy (average) : 0.9506</code></pre>
+<p>Compute confusion matrix obtained by applying model to entire training set.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">confusionMatrix</span>(train.dv$classe,<span class="kw">predict</span>(mod1,<span class="dt">newdata=</span>train.dv))$table</code></pre></div>
+<pre><code>##           Reference
+## Prediction    A    B    C    D    E
+##          A 5516   27    1   19   17
+##          B  132 3515   85   46   19
+##          C    0  109 3276   32    5
+##          D    0   13  160 3027   16
+##          E    7   59   51   40 3450</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">confusionMatrix</span>(train.dv$classe,<span class="kw">predict</span>(mod1,<span class="dt">newdata=</span>train.dv))$overall[<span class="dv">1</span>]</code></pre></div>
+<pre><code>##  Accuracy 
+## 0.9572928</code></pre>
+<h3 id="how-cross-validation-is-used">2. How Cross-Validation Is Used</h3>
+<p>K-fold cross-validation is used with k = 10.</p>
+<h3 id="expected-out-of-sample-error">3. Expected Out-of-Sample Error</h3>
+<p>Because 9/10 of training set was not used to build the model, use it to estimate out-of-sample error.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">train.oos.subset &lt;-<span class="st"> </span>train.dv[-inTr,]
+<span class="kw">dim</span>(train.oos.subset)</code></pre></div>
+<pre><code>## [1] 17658    60</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">cm.oos &lt;-<span class="st"> </span><span class="kw">confusionMatrix</span>(train.oos.subset$classe,
+                          <span class="kw">predict</span>(mod1,<span class="dt">newdata=</span>train.oos.subset))
+cm.oos$overall[<span class="dv">1</span>]</code></pre></div>
+<pre><code>## Accuracy 
+## 0.952656</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">print</span>(<span class="kw">paste</span>(<span class="st">&#39;expected out of sample error&#39;</span>, <span class="kw">as.numeric</span>(<span class="dv">1</span> -<span class="st"> </span>cm.oos$overall[<span class="dv">1</span>])))</code></pre></div>
+<pre><code>## [1] &quot;expected out of sample error 0.0473439800656926&quot;</code></pre>
+<h3 id="why-i-made-the-choices-i-did">4. Why I Made the Choices I Did</h3>
+<ul>
+<li>A subset of the initial training set was used to build the model because
+<ul>
+<li>build time with the full training set was &gt; 20 minutes</li>
+<li>10% subset gave sufficient accuracy</li>
+</ul></li>
+<li>Gradient-boosting multinomial logistic regression (<code>gbm</code>) was used because outcome is a nominal variable and most predictors take on continuous values.</li>
+<li>K-fold cross-validation with value of 10 for k because that value is efficient for 60 predictors; leave-one-out cross-validation would have been too slow.</li>
+</ul>
+<h2 id="predict-test-set-outcomes">Predict Test Set Outcomes</h2>
+<p>Here are the predictions provided by the above model for the 20 observations in the test set.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">predict</span>(mod1,<span class="dt">newdata=</span>test.dv)</code></pre></div>
+<pre><code>##  [1] B A B A A E D B A A B C B A E E A B B B
+## Levels: A B C D E</code></pre>
+<h2 id="conclusion">Conclusion</h2>
+<p>Expected accuracy near 95% is obtained modeling the given data using gradient-boosted multinomial logistic regression with 10-fold cross-validation.</p>
