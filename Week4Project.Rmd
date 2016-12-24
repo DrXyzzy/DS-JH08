@@ -72,7 +72,7 @@ table(training$user_name)
 plot(training[,c("user_name","classe")])
 ```
 
-Convert to `user_name` to 6 numeric variables (dummy variables) to allow `gbm` modeling.
+Convert factor `user_name` to 6 numeric variables (dummy variables) to allow `gbm` modeling.
 
 ```{r}
 dv <- dummyVars(~ user_name,data=test.noX)

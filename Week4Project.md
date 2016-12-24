@@ -144,7 +144,7 @@ plot(training[,c("user_name","classe")])
 
 ![classe vs user_name](figure/user_name-1.png)
 
-Convert to `user_name` to 6 numeric variables (dummy variables) to allow `gbm` modeling.
+Convert factor `user_name` to 6 numeric variables (dummy variables) to allow `gbm` modeling.
 
 
 ```r
@@ -225,7 +225,38 @@ mod1 <- train(classe ~ ., data=train.dv.subset, trControl=train_control, method=
 ```
 
 ```
-## Error in eval(expr, envir, enclos): object 'train.dv.subset' not found
+## Loading required package: gbm
+```
+
+```
+## Loading required package: survival
+```
+
+```
+## 
+## Attaching package: 'survival'
+```
+
+```
+## The following object is masked from 'package:caret':
+## 
+##     cluster
+```
+
+```
+## Loading required package: splines
+```
+
+```
+## Loading required package: parallel
+```
+
+```
+## Loaded gbm 2.1
+```
+
+```
+## Loading required package: plyr
 ```
 
 ```r
@@ -233,7 +264,7 @@ Sys.time() - t1
 ```
 
 ```
-## Time difference of 0.005096674 secs
+## Time difference of 1.46186 mins
 ```
 Compute confusion matrix for training subset.
 
@@ -243,7 +274,19 @@ confusionMatrix.train(mod1)
 ```
 
 ```
-## Error in match(x, table, nomatch = 0L): object 'mod1' not found
+## Cross-Validated (10 fold) Confusion Matrix 
+## 
+## (entries are percentual average cell counts across resamples)
+##  
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 27.9  0.7  0.0  0.1  0.0
+##          B  0.4 17.9  0.5  0.2  0.4
+##          C  0.1  0.6 16.8  0.7  0.3
+##          D  0.1  0.1  0.2 15.2  0.4
+##          E  0.1  0.1  0.0  0.3 17.4
+##                             
+##  Accuracy (average) : 0.9506
 ```
 Compute confusion matrix obtained by applying model to entire training set.
 
@@ -252,7 +295,13 @@ confusionMatrix(train.dv$classe,predict(mod1,newdata=train.dv))$table
 ```
 
 ```
-## Error in predict(mod1, newdata = train.dv): object 'mod1' not found
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 5516   27    1   19   17
+##          B  132 3515   85   46   19
+##          C    0  109 3276   32    5
+##          D    0   13  160 3027   16
+##          E    7   59   51   40 3450
 ```
 
 ```r
@@ -260,7 +309,8 @@ confusionMatrix(train.dv$classe,predict(mod1,newdata=train.dv))$overall[1]
 ```
 
 ```
-## Error in predict(mod1, newdata = train.dv): object 'mod1' not found
+##  Accuracy 
+## 0.9572928
 ```
 
 ### 2. How Cross-Validation Is Used
@@ -283,18 +333,12 @@ dim(train.oos.subset)
 ```r
 cm.oos <- confusionMatrix(train.oos.subset$classe,
                           predict(mod1,newdata=train.oos.subset))
-```
-
-```
-## Error in predict(mod1, newdata = train.oos.subset): object 'mod1' not found
-```
-
-```r
 cm.oos$overall[1]
 ```
 
 ```
-## Error in eval(expr, envir, enclos): object 'cm.oos' not found
+## Accuracy 
+## 0.952656
 ```
 
 ```r
@@ -302,7 +346,7 @@ print(paste('expected out of sample error', as.numeric(1 - cm.oos$overall[1])))
 ```
 
 ```
-## Error in paste("expected out of sample error", as.numeric(1 - cm.oos$overall[1])): object 'cm.oos' not found
+## [1] "expected out of sample error 0.0473439800656926"
 ```
 
 ### 4. Why I Made the Choices I Did
@@ -322,7 +366,8 @@ predict(mod1,newdata=test.dv)
 ```
 
 ```
-## Error in predict(mod1, newdata = test.dv): object 'mod1' not found
+##  [1] B A B A A E D B A A B C B A E E A B B B
+## Levels: A B C D E
 ```
 
 ## Conclusion

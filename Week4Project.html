@@ -60,7 +60,7 @@ Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activ
 <img src="figure/user_name-1.png" alt="classe vs user_name" />
 <p class="caption">classe vs user_name</p>
 </div>
-<p>Convert to <code>user_name</code> to 6 numeric variables (dummy variables) to allow <code>gbm</code> modeling.</p>
+<p>Convert factor <code>user_name</code> to 6 numeric variables (dummy variables) to allow <code>gbm</code> modeling.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">dv &lt;-<span class="st"> </span><span class="kw">dummyVars</span>(~<span class="st"> </span>user_name,<span class="dt">data=</span>test.noX)
 train.dv &lt;-<span class="st"> </span><span class="kw">cbind</span>(<span class="kw">predict</span>(dv,<span class="dt">newdata=</span>train.noX),train.noX[,-<span class="dv">1</span>])
 <span class="kw">dim</span>(train.dv)</code></pre></div>
@@ -98,17 +98,46 @@ train.dv.subset &lt;-<span class="st"> </span>train.dv[inTr,]
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">t1 &lt;-<span class="st"> </span><span class="kw">Sys.time</span>()
 train_control&lt;-<span class="st"> </span><span class="kw">trainControl</span>(<span class="dt">method=</span><span class="st">&quot;cv&quot;</span>, <span class="dt">number=</span><span class="dv">10</span>, <span class="dt">savePredictions =</span> <span class="ot">TRUE</span>)
 mod1 &lt;-<span class="st"> </span><span class="kw">train</span>(classe ~<span class="st"> </span>., <span class="dt">data=</span>train.dv.subset, <span class="dt">trControl=</span>train_control, <span class="dt">method=</span><span class="st">&quot;gbm&quot;</span>, <span class="dt">verbose=</span>F)</code></pre></div>
-<pre><code>## Error in eval(expr, envir, enclos): object &#39;train.dv.subset&#39; not found</code></pre>
+<pre><code>## Loading required package: gbm</code></pre>
+<pre><code>## Loading required package: survival</code></pre>
+<pre><code>## 
+## Attaching package: &#39;survival&#39;</code></pre>
+<pre><code>## The following object is masked from &#39;package:caret&#39;:
+## 
+##     cluster</code></pre>
+<pre><code>## Loading required package: splines</code></pre>
+<pre><code>## Loading required package: parallel</code></pre>
+<pre><code>## Loaded gbm 2.1</code></pre>
+<pre><code>## Loading required package: plyr</code></pre>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">Sys.time</span>() -<span class="st"> </span>t1</code></pre></div>
-<pre><code>## Time difference of 0.005096674 secs</code></pre>
+<pre><code>## Time difference of 1.46186 mins</code></pre>
 <p>Compute confusion matrix for training subset.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">confusionMatrix.train</span>(mod1)</code></pre></div>
-<pre><code>## Error in match(x, table, nomatch = 0L): object &#39;mod1&#39; not found</code></pre>
+<pre><code>## Cross-Validated (10 fold) Confusion Matrix 
+## 
+## (entries are percentual average cell counts across resamples)
+##  
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 27.9  0.7  0.0  0.1  0.0
+##          B  0.4 17.9  0.5  0.2  0.4
+##          C  0.1  0.6 16.8  0.7  0.3
+##          D  0.1  0.1  0.2 15.2  0.4
+##          E  0.1  0.1  0.0  0.3 17.4
+##                             
+##  Accuracy (average) : 0.9506</code></pre>
 <p>Compute confusion matrix obtained by applying model to entire training set.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">confusionMatrix</span>(train.dv$classe,<span class="kw">predict</span>(mod1,<span class="dt">newdata=</span>train.dv))$table</code></pre></div>
-<pre><code>## Error in predict(mod1, newdata = train.dv): object &#39;mod1&#39; not found</code></pre>
+<pre><code>##           Reference
+## Prediction    A    B    C    D    E
+##          A 5516   27    1   19   17
+##          B  132 3515   85   46   19
+##          C    0  109 3276   32    5
+##          D    0   13  160 3027   16
+##          E    7   59   51   40 3450</code></pre>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">confusionMatrix</span>(train.dv$classe,<span class="kw">predict</span>(mod1,<span class="dt">newdata=</span>train.dv))$overall[<span class="dv">1</span>]</code></pre></div>
-<pre><code>## Error in predict(mod1, newdata = train.dv): object &#39;mod1&#39; not found</code></pre>
+<pre><code>##  Accuracy 
+## 0.9572928</code></pre>
 <h3 id="how-cross-validation-is-used">2. How Cross-Validation Is Used</h3>
 <p>K-fold cross-validation is used with k = 10.</p>
 <h3 id="expected-out-of-sample-error">3. Expected Out-of-Sample Error</h3>
@@ -117,12 +146,12 @@ mod1 &lt;-<span class="st"> </span><span class="kw">train</span>(classe ~<span c
 <span class="kw">dim</span>(train.oos.subset)</code></pre></div>
 <pre><code>## [1] 17658    60</code></pre>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">cm.oos &lt;-<span class="st"> </span><span class="kw">confusionMatrix</span>(train.oos.subset$classe,
-                          <span class="kw">predict</span>(mod1,<span class="dt">newdata=</span>train.oos.subset))</code></pre></div>
-<pre><code>## Error in predict(mod1, newdata = train.oos.subset): object &#39;mod1&#39; not found</code></pre>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">cm.oos$overall[<span class="dv">1</span>]</code></pre></div>
-<pre><code>## Error in eval(expr, envir, enclos): object &#39;cm.oos&#39; not found</code></pre>
+                          <span class="kw">predict</span>(mod1,<span class="dt">newdata=</span>train.oos.subset))
+cm.oos$overall[<span class="dv">1</span>]</code></pre></div>
+<pre><code>## Accuracy 
+## 0.952656</code></pre>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">print</span>(<span class="kw">paste</span>(<span class="st">&#39;expected out of sample error&#39;</span>, <span class="kw">as.numeric</span>(<span class="dv">1</span> -<span class="st"> </span>cm.oos$overall[<span class="dv">1</span>])))</code></pre></div>
-<pre><code>## Error in paste(&quot;expected out of sample error&quot;, as.numeric(1 - cm.oos$overall[1])): object &#39;cm.oos&#39; not found</code></pre>
+<pre><code>## [1] &quot;expected out of sample error 0.0473439800656926&quot;</code></pre>
 <h3 id="why-i-made-the-choices-i-did">4. Why I Made the Choices I Did</h3>
 <ul>
 <li>A subset of the initial training set was used to build the model because
@@ -136,6 +165,7 @@ mod1 &lt;-<span class="st"> </span><span class="kw">train</span>(classe ~<span c
 <h2 id="predict-test-set-outcomes">Predict Test Set Outcomes</h2>
 <p>Here are the predictions provided by the above model for the 20 observations in the test set.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">predict</span>(mod1,<span class="dt">newdata=</span>test.dv)</code></pre></div>
-<pre><code>## Error in predict(mod1, newdata = test.dv): object &#39;mod1&#39; not found</code></pre>
+<pre><code>##  [1] B A B A A E D B A A B C B A E E A B B B
+## Levels: A B C D E</code></pre>
 <h2 id="conclusion">Conclusion</h2>
 <p>Expected accuracy near 95% is obtained modeling the given data using gradient-boosted multinomial logistic regression with 10-fold cross-validation.</p>
