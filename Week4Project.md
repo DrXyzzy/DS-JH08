@@ -26,57 +26,25 @@ Libraries
 library(caret)
 ```
 
-```
-## Loading required package: lattice
-```
-
-```
-## Loading required package: ggplot2
-```
-
 Load Data
 
 
 ```r
 training <- read.csv("pml-training.csv",na.strings=c("NA","","#DIV/0!"))
-```
-
-```
-## Warning in file(file, "rt"): cannot open file 'pml-training.csv': No such
-## file or directory
-```
-
-```
-## Error in file(file, "rt"): cannot open the connection
-```
-
-```r
 dim(training)
 ```
 
 ```
-## Error in eval(expr, envir, enclos): object 'training' not found
+## [1] 19622   160
 ```
 
 ```r
 testing <- read.csv("pml-testing.csv",na.strings=c("NA","","#DIV/0!"))
-```
-
-```
-## Warning in file(file, "rt"): cannot open file 'pml-testing.csv': No such
-## file or directory
-```
-
-```
-## Error in file(file, "rt"): cannot open the connection
-```
-
-```r
 dim(testing)
 ```
 
 ```
-## Error in eval(expr, envir, enclos): object 'testing' not found
+## [1]  20 160
 ```
 
 ## Tidy the Data
@@ -86,58 +54,39 @@ There are 60 variables in the training set with no missing values. The other 100
 
 ```r
 na.counts <- colSums(is.na(training))
-```
-
-```
-## Error in is.data.frame(x): object 'training' not found
-```
-
-```r
 table(na.counts)
 ```
 
 ```
-## Error in table(na.counts): object 'na.counts' not found
+## na.counts
+##     0 19216 19217 19218 19220 19221 19225 19226 19227 19248 19293 19294 
+##    60    67     1     1     1     4     1     4     2     2     1     1 
+## 19296 19299 19300 19301 19622 
+##     2     1     4     2     6
 ```
 
 ```r
 hist(na.counts)
 ```
 
-```
-## Error in hist(na.counts): object 'na.counts' not found
-```
+![number of NA values vs variable index](figure/drop missing-1.png)
 
 ```r
 training.no.na <- training[na.counts == 0]
-```
-
-```
-## Error in eval(expr, envir, enclos): object 'training' not found
-```
-
-```r
 dim(training.no.na)
 ```
 
 ```
-## Error in eval(expr, envir, enclos): object 'training.no.na' not found
+## [1] 19622    60
 ```
 
 ```r
 testing.no.na <- testing[na.counts == 0]
-```
-
-```
-## Error in eval(expr, envir, enclos): object 'testing' not found
-```
-
-```r
 dim(testing.no.na)
 ```
 
 ```
-## Error in eval(expr, envir, enclos): object 'testing.no.na' not found
+## [1] 20 60
 ```
 
 Drop more variables
@@ -152,39 +101,27 @@ table(training$new_window)
 ```
 
 ```
-## Error in table(training$new_window): object 'training' not found
+## 
+##    no   yes 
+## 19216   406
 ```
 
 ```r
 train.noX <- training.no.na[c(-1, -3, -4, -5, -6)]
-```
-
-```
-## Error in eval(expr, envir, enclos): object 'training.no.na' not found
-```
-
-```r
 dim(train.noX)
 ```
 
 ```
-## Error in eval(expr, envir, enclos): object 'train.noX' not found
+## [1] 19622    55
 ```
 
 ```r
 test.noX <- testing.no.na[c(-1, -3, -4, -5, -6)]
-```
-
-```
-## Error in eval(expr, envir, enclos): object 'testing.no.na' not found
-```
-
-```r
 dim(test.noX)
 ```
 
 ```
-## Error in eval(expr, envir, enclos): object 'test.noX' not found
+## [1] 20 55
 ```
 ## Explore and Preprocess Data
 
@@ -196,75 +133,49 @@ table(training$user_name)
 ```
 
 ```
-## Error in table(training$user_name): object 'training' not found
+## 
+##   adelmo carlitos  charles   eurico   jeremy    pedro 
+##     3892     3112     3536     3070     3402     2610
 ```
 
 ```r
 plot(training[,c("user_name","classe")])
 ```
 
-```
-## Error in plot(training[, c("user_name", "classe")]): object 'training' not found
-```
+![classe vs user_name](figure/user_name-1.png)
 
 Convert to `user_name` to 6 numeric variables (dummy variables) to allow `gbm` modeling.
 
 
 ```r
 dv <- dummyVars(~ user_name,data=test.noX)
-```
-
-```
-## Error in is.data.frame(data): object 'test.noX' not found
-```
-
-```r
 train.dv <- cbind(predict(dv,newdata=train.noX),train.noX[,-1])
-```
-
-```
-## Error in predict(dv, newdata = train.noX): object 'dv' not found
-```
-
-```r
 dim(train.dv)
 ```
 
 ```
-## Error in eval(expr, envir, enclos): object 'train.dv' not found
+## [1] 19622    60
 ```
 
 ```r
 test.dv <- cbind(predict(dv,newdata=test.noX),test.noX[,-1])
-```
-
-```
-## Error in predict(dv, newdata = test.noX): object 'dv' not found
-```
-
-```r
 dim(test.dv)
 ```
 
 ```
-## Error in eval(expr, envir, enclos): object 'test.dv' not found
+## [1] 20 60
 ```
 Check for near-zero covariance to see if we can drop more variables. No, there are not any variables with zero variance or near-zero variance.
 
 ```r
 nzc <- nearZeroVar(train.dv, saveMetrics = T)
-```
-
-```
-## Error in nzv(x, freqCut = freqCut, uniqueCut = uniqueCut, saveMetrics = saveMetrics, : object 'train.dv' not found
-```
-
-```r
 table(nzc$nzv)
 ```
 
 ```
-## Error in table(nzc$nzv): object 'nzc' not found
+## 
+## FALSE 
+##    60
 ```
 
 ```r
@@ -272,51 +183,30 @@ table(nzc$zeroVar)
 ```
 
 ```
-## Error in table(nzc$zeroVar): object 'nzc' not found
+## 
+## FALSE 
+##    60
 ```
 Compute principal component analysis to see if some of the variables can be dropped. Gradual fall-off of curve suggests we can't reduce number of variables significantly by dropping low-importance variables, so won't use PCA for the model.
 
 ```r
 p0 <- prcomp(subset(train.dv, select = -c(classe)))
-```
-
-```
-## Error in subset(train.dv, select = -c(classe)): object 'train.dv' not found
-```
-
-```r
 plot(p0$sdev)
 ```
 
-```
-## Error in plot(p0$sdev): object 'p0' not found
-```
+![PCA variable importance as indicated by std dev](figure/pca-1.png)
 
 Subset the training set to reduce model run time. Use 1/10 of original training set.
 
 ```r
 set.seed(107)
 inTr <- createDataPartition(y=train.dv$classe,p=0.1,list=F)
-```
-
-```
-## Error in createDataPartition(y = train.dv$classe, p = 0.1, list = F): object 'train.dv' not found
-```
-
-```r
 train.dv.subset <- train.dv[inTr,]
-```
-
-```
-## Error in eval(expr, envir, enclos): object 'train.dv' not found
-```
-
-```r
 dim(train.dv.subset)
 ```
 
 ```
-## Error in eval(expr, envir, enclos): object 'train.dv.subset' not found
+## [1] 1964   60
 ```
 
 ## Buid and Evaluate the Model
@@ -362,7 +252,7 @@ confusionMatrix(train.dv$classe,predict(mod1,newdata=train.dv))$table
 ```
 
 ```
-## Error in confusionMatrix(train.dv$classe, predict(mod1, newdata = train.dv)): object 'train.dv' not found
+## Error in predict(mod1, newdata = train.dv): object 'mod1' not found
 ```
 
 ```r
@@ -370,7 +260,7 @@ confusionMatrix(train.dv$classe,predict(mod1,newdata=train.dv))$overall[1]
 ```
 
 ```
-## Error in confusionMatrix(train.dv$classe, predict(mod1, newdata = train.dv)): object 'train.dv' not found
+## Error in predict(mod1, newdata = train.dv): object 'mod1' not found
 ```
 
 ### 2. How Cross-Validation Is Used
@@ -383,18 +273,11 @@ Because 9/10 of training set was not used to build the model, use it to estimate
 
 ```r
 train.oos.subset <- train.dv[-inTr,]
-```
-
-```
-## Error in eval(expr, envir, enclos): object 'train.dv' not found
-```
-
-```r
 dim(train.oos.subset)
 ```
 
 ```
-## Error in eval(expr, envir, enclos): object 'train.oos.subset' not found
+## [1] 17658    60
 ```
 
 ```r
@@ -403,7 +286,7 @@ cm.oos <- confusionMatrix(train.oos.subset$classe,
 ```
 
 ```
-## Error in confusionMatrix(train.oos.subset$classe, predict(mod1, newdata = train.oos.subset)): object 'train.oos.subset' not found
+## Error in predict(mod1, newdata = train.oos.subset): object 'mod1' not found
 ```
 
 ```r
